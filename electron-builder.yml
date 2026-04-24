@@ -1,0 +1,45 @@
+appId: com.swcopilot.app
+productName: SW Copilot
+copyright: Copyright © 2026 SW Copilot Contributors
+
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - dist/**/*
+  - assets/**/*
+  - package.json
+  - '!**/*.map'
+  - '!**/*.ts'
+  - '!src'
+  - '!tests'
+  - '!docs'
+  - '!*.md'
+  - '!tsconfig*.json'
+  - '!vite.config.ts'
+  - '!.env*'
+
+asarUnpack:
+  - 'node_modules/winax/**/*'
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+    - target: squirrel
+  icon: assets/icon.ico
+  artifactName: '${productName}-Setup-${version}-${arch}.${ext}'
+
+nsis:
+  oneClick: true
+  allowToChangeInstallationDirectory: false
+  deleteAppDataOnUninstall: false
+
+squirrelWindows:
+  iconUrl: https://your-cdn.com/icon.ico
+
+publish:
+  provider: github
+  owner: yourname
+  repo: sw-copilot
