@@ -55,12 +55,21 @@ export class AnthropicAdapter extends BaseLLMAdapter {
   }
 
   private buildHeaders(): Record<string, string> {
-    return {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      'x-api-key': this.config.apiKey,
       'anthropic-version': ANTHROPIC_VERSION,
-      // 非浏览器环境不需要 dangerous-direct-browser-access
     };
+    // 检测是否走 Bearer auth（如 MiniMax 的 Anthropic 兼容端点）
+    // 判断标准：baseURL 包含 /anthropic 或使用非官方 Anthropic 域名
+    const isBearerAuth =
+      this.config.baseURL.includes('/anthropic') ||
+      (!this.config.baseURL.includes('api.anthropic.com') && !this.config.baseURL.includes('anthropic.com'));
+    if (isBearerAuth) {
+      headers['Authorization'] = `Bearer ${this.config.apiKey}`;
+    } else {
+      headers['x-api-key'] = this.config.apiKey;
+    }
+    return headers;
   }
 
   async chat(messages: ChatMessage[], signal?: AbortSignal): Promise<LLMResponse> {
