@@ -8,7 +8,7 @@
 
 市面上的 CAD AI 助手（如 MecAgent）要求绑定特定 AI 服务商，按月收费 $16-417，且底层模型能力有限。
 
-SW Copilot 的理念是：**AI 后端由你决定**。你可以接入 Claude、GPT-4o、DeepSeek、Qwen、MiniMax，甚至 Ollama 本地模型。代码完全开源，免费使用。
+SW Copilot 的理念是：**AI 后端由你决定**。你可以接入 Claude、GPT-4o、DeepSeek、Qwen、MiniMax，甚至 Ollama 本地模型。代码开源，个人免费使用（MIT + Commons Clause 非商用许可，商用需授权）。
 
 ## 功能
 
@@ -19,18 +19,18 @@ SW Copilot 的理念是：**AI 后端由你决定**。你可以接入 Claude、G
 - 内置常用自动化模板（批量修改、导出、BOM 等）
 - 脚本安全校验 + 执行超时保护
 - 浅色 / 深色双主题
-- 开源 MIT 许可
+- 开源许可：MIT + Commons Clause（个人免费，商用需授权）
 
 ## 快速开始
 
 ### 安装
 
-从 [Releases](https://github.com/yourname/sw-copilot/releases) 下载安装包，双击安装即可。
+从 [Releases](https://github.com/raylanlin/sw-copilot/releases) 下载安装包，双击安装即可。
 
 ### 从源码运行
 
 ```bash
-git clone https://github.com/yourname/sw-copilot.git
+git clone https://github.com/raylanlin/sw-copilot.git
 cd sw-copilot
 npm install
 npm run dev
