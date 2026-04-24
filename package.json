@@ -78,7 +78,7 @@
     "squirrelWindows": {},
     "publish": {
       "provider": "github",
-      "owner": "yourname",
+      "owner": "raylanlin",
       "repo": "sw-copilot"
     },
     "files": [
