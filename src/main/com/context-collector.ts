@@ -195,6 +195,53 @@ function collectDimensions(doc: any): SWDocumentContext['dimensions'] {
   return dims;
 }
 
+/**
+ * 尝试读取 SolidWorks 自定义属性的值。
+ *
+ * COM ByRef 限制: CustomPropertyManager.Get5 的 Value/ResolvedVal 是 BSTR 输出参数,
+ * winax 不支持 JS 按引用传参来接收输出值。
+ *
+ * 应对策略(多策略尝试,命中第一个能工作的):
+ *   1. 传数组引用(JS 数组是引用类型,部分 winax 版本能写回数组元素)
+ *   2. 传 null(部分 winax 版本自动分配变量)
+ *   3. 传空字符串(原始方式,不期待返回值)
+ *   都失败则返回 null,该属性跳过。
+ */
+function tryGetCustomPropertyValue(
+  mgr: any,
+  name: string,
+): { value: string; resolved: string } | null {
+  // 策略1:传数组引用
+  try {
+    const val = [''];
+    const resolved = [''];
+    const ok = mgr.Get5(name, false, val, resolved, false);
+    if (ok !== false && (val[0] || resolved[0])) {
+      return { value: String(val[0] || ''), resolved: String(resolved[0] || '') };
+    }
+  } catch { /* 尝试下一策略 */ }
+
+  // 策略2:传 null,并从返回值对象提取
+  try {
+    const result = mgr.Get5(name, false, null, null, false);
+    if (result && typeof result === 'object') {
+      const r = result as any;
+      return {
+        value: String(r.Value || r[0] || ''),
+        resolved: String(r.ResolvedValue || r[1] || ''),
+      };
+    }
+  } catch { /* 尝试下一策略 */ }
+
+  // 策略3:传空字符串(纯熟悉调用,不期待返回值)
+  try {
+    mgr.Get5(name, false, '', '', false);
+    return { value: '', resolved: '' };
+  } catch { /* 彻底失败 */ }
+
+  return null;
+}
+
 function collectCustomProperties(doc: any): Record<string, string> {
   const props: Record<string, string> = {};
   try {
@@ -205,11 +252,8 @@ function collectCustomProperties(doc: any): Record<string, string> {
     if (!names || !Array.isArray(names)) return props;
 
     for (const name of names.slice(0, 20)) {
-      const val = safeCall(() => {
-        const out = { Value: '', ResolvedValue: '' };
-        mgr.Get5(name, false, out.Value, out.ResolvedValue, false);
-        return out.ResolvedValue || out.Value;
-      }, '');
+      const prop = tryGetCustomPropertyValue(mgr, name);
+      const val = prop?.resolved || prop?.value || '';
       if (val) props[name] = val;
     }
   } catch {
