@@ -27,6 +27,7 @@ function createMainWindow(): void {
     show: false,
     backgroundColor: '#1b1c20',
     title: 'SW Copilot',
+    menu: null,  // 移除默认菜单栏 (File/Edit/View/Window/Help)
     webPreferences: {
       // tsc rootDir=src 导致输出保留子目录结构:
       //   dist/main/main/index.js   (本文件)
