@@ -138,7 +138,9 @@ export class SolidWorksBridge {
   private async checkConnection(): Promise<boolean> {
     const vbs = `
 On Error Resume Next
+On Error Resume Next
 Set swApp = GetObject(, "SldWorks.Application")
+If swApp Is Nothing Then Set swApp = CreateObject("SldWorks.Application")
 If Err.Number = 0 Then
     WScript.Echo "OK"
 Else
@@ -155,7 +157,9 @@ End If`;
   private async fetchStatus(): Promise<SWStatus> {
     const vbs = `
 On Error Resume Next
+On Error Resume Next
 Set swApp = GetObject(, "SldWorks.Application")
+If swApp Is Nothing Then Set swApp = CreateObject("SldWorks.Application")
 If Err.Number <> 0 Then
     WScript.Echo "{""connected"":false}"
     WScript.Quit 0
@@ -236,7 +240,9 @@ function emptyFeatures(): DocumentFeatures {
 function buildCollectFeaturesVBS(): string {
   return `
 On Error Resume Next
+On Error Resume Next
 Set swApp = GetObject(, "SldWorks.Application")
+If swApp Is Nothing Then Set swApp = CreateObject("SldWorks.Application")
 If Err.Number <> 0 Then
     WScript.Echo "{}"
     WScript.Quit 0
@@ -427,7 +433,9 @@ function buildBackupVBS(backupPath: string, originalPath?: string): string {
     : '';
   return `
 On Error Resume Next
+On Error Resume Next
 Set swApp = GetObject(, "SldWorks.Application")
+If swApp Is Nothing Then Set swApp = CreateObject("SldWorks.Application")
 If Err.Number <> 0 Then WScript.Quit 1
 Set doc = swApp.ActiveDoc
 If doc Is Nothing Then WScript.Quit 1
