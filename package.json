@@ -1,6 +1,6 @@
 {
   "name": "sw-copilot",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "开源 SolidWorks AI 自动化助手 — 自由选择任意 AI 后端",
   "main": "dist/main/main/index.js",
   "author": "SW Copilot Contributors",
