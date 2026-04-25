@@ -2,7 +2,7 @@
 //
 // Electron 主进程入口
 
-import { app, BrowserWindow, shell } from 'electron';
+import { app, BrowserWindow, shell, Menu } from 'electron';
 import * as path from 'path';
 import { registerIpcHandlers, abortAllRequests } from './ipc/handlers';
 import { getBridge } from './com/sw-bridge';
@@ -27,7 +27,6 @@ function createMainWindow(): void {
     show: false,
     backgroundColor: '#1b1c20',
     title: 'SW Copilot',
-    menu: null,  // 移除默认菜单栏 (File/Edit/View/Window/Help)
     webPreferences: {
       // tsc rootDir=src 导致输出保留子目录结构:
       //   dist/main/main/index.js   (本文件)
@@ -93,6 +92,9 @@ app.whenReady().then(async () => {
   } catch (err) {
     console.warn('[SW Copilot] 生成器自检失败:', err);
   }
+
+  // 移除默认菜单栏 (File/Edit/View/Window/Help)
+  Menu.setApplicationMenu(null);
 
   registerIpcHandlers(getMainWindow);
   createMainWindow();
