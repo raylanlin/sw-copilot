@@ -75,6 +75,13 @@ export function vbaToVbs(vbaCode: string, opts?: { resultFilePath?: string }): s
   code = code.replace(/^\s*Sub\s+main\s*\(\s*\)\s*$/gim, "' --- 脚本开始 ---");
   code = code.replace(/^\s*End\s+Sub\s*$/gim, "' --- 脚本结束 ---");
 
+  // 7a. 如果代码中有非 main 的 Sub 但没有被展开，
+  //     在末尾添加调用语句，确保子程序会被执行。
+  const subMatch = code.match(/^\s*Sub\s+(\w+)\s*\(\s*\)\s*$/im);
+  if (subMatch && !code.includes("' --- 脚本开始 ---")) {
+    code += `\n\n' --- 执行子程序 ---\n${subMatch[1]}`;
+  }
+
   // 8. 清理多余空行
   code = code.replace(/\n{3,}/g, '\n\n');
 

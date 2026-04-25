@@ -87,7 +87,7 @@ export class ScriptEngine {
       // 使用 System32 下的 cscript 完整路径，避免 PATH 环境变量不含 System32 的情况
       const cscriptPath = `${process.env.SYSTEMROOT || 'C:\\Windows'}\\System32\\cscript.exe`;
       const child = exec(
-        `"${cscriptPath}" //NoLogo "${scriptPath}"`,
+        `chcp 65001 >nul && "${cscriptPath}" //NoLogo "${scriptPath}"`,
         { timeout: VBS_TIMEOUT_MS, windowsHide: true, encoding: 'utf8' },
         (error, stdout, stderr) => {
           const resultData = readResultFile(resultPath);

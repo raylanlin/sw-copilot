@@ -206,7 +206,7 @@ function runVBS(scriptCode: string): Promise<string> {
     const cscriptPath =
       `${process.env.SYSTEMROOT || 'C:\\Windows'}\\System32\\cscript.exe`;
     exec(
-      `"${cscriptPath}" //NoLogo "${scriptPath}"`,
+      `chcp 65001 >nul && "${cscriptPath}" //NoLogo "${scriptPath}"`,
       { timeout: VBS_TIMEOUT_MS, windowsHide: true, encoding: 'utf8' },
       (error, stdout) => {
         safeUnlink(scriptPath);
