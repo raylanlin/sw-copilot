@@ -6,6 +6,7 @@
   "author": "SW Copilot Contributors",
   "license": "MIT",
   "scripts": {
+    "postinstall": "electron-rebuild -f -w winax",
     "dev": "concurrently -k -n main,preload,renderer,electron -c blue,cyan,magenta,green \"npm:dev:main\" \"npm:dev:preload\" \"npm:dev:renderer\" \"npm:dev:electron\"",
     "dev:main": "tsc -w -p tsconfig.main.json",
     "dev:preload": "tsc -w -p tsconfig.preload.json",
@@ -42,6 +43,7 @@
     "cross-env": "^7.0.3",
     "electron": "^28.3.3",
     "electron-builder": "^24.9.0",
+    "@electron/rebuild": "^3.6.0",
     "eslint": "^8.55.0",
     "prettier": "^3.1.0",
     "react": "^18.3.1",
