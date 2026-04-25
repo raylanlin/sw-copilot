@@ -47,7 +47,7 @@ export function vbaToVbs(vbaCode: string, opts?: { resultFilePath?: string }): s
   // VBS 独立环境: Set swApp = GetObject(, "SldWorks.Application")
   code = code.replace(
     /Set\s+swApp\s*=\s*Application\.SldWorks/gi,
-    'Set swApp = GetObject(, "SldWorks.Application")',
+    'Set swApp = GetObject(, "SldWorks.Application")\nIf swApp Is Nothing Then Set swApp = CreateObject("SldWorks.Application")',
   );
 
   // 4. 替换错误处理
