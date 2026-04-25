@@ -71,9 +71,13 @@ export function vbaToVbs(vbaCode: string, opts?: { resultFilePath?: string }): s
     code = code.replace(/\bExit\s+Sub\b/gi, 'WScript.Quit 0');
   }
 
-  // 7. 展开 Sub main() ... End Sub 为顶层代码
+  // 7. 展开 Sub main() ... End Sub 为顶层代码。
+  //    ⚠️ 只有在 hadSubMain 为 true 时才替换 End Sub，
+  //    否则会把非 main 子程序的 End Sub 也删掉，导致 "Missing End" 编译错误。
   code = code.replace(/^\s*Sub\s+main\s*\(\s*\)\s*$/gim, "' --- 脚本开始 ---");
-  code = code.replace(/^\s*End\s+Sub\s*$/gim, "' --- 脚本结束 ---");
+  if (hadSubMain) {
+    code = code.replace(/^\s*End\s+Sub\s*$/gim, "' --- 脚本结束 ---");
+  }
 
   // 7a. 如果代码中有非 main 的 Sub 但没有被展开，
   //     在末尾添加调用语句，确保子程序会被执行。
