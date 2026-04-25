@@ -37,9 +37,9 @@ nsis:
   deleteAppDataOnUninstall: false
 
 squirrelWindows:
-  iconUrl: https://your-cdn.com/icon.ico
+  iconUrl: https://raw.githubusercontent.com/raylanlin/sw-copilot/master/assets/icon-256.png
 
 publish:
   provider: github
-  owner: yourname
+  owner: raylanlin
   repo: sw-copilot
