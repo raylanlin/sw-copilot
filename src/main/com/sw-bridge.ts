@@ -13,12 +13,12 @@
 // 3. getRawApp() 不再可用（跨进程无法传递 COM 指针），context-collector 改用 VBS 采集
 
 import * as fs from 'fs';
-import * as os from 'os';
 import * as path from 'path';
 import { exec } from 'child_process';
 import type { SWDocumentType, SWStatus } from '../../shared/types';
+import { writeVBSFile, safeUnlink } from './vbs-writer';
 
-const VBS_TIMEOUT_MS = 10_000;
+const VBS_TIMEOUT_MS = 15_000;
 
 export class SolidWorksBridge {
   private cachedStatus: SWStatus = { connected: false };
@@ -200,10 +200,7 @@ function runVBS(scriptCode: string): Promise<string> {
     return Promise.reject(new Error('VBScript 仅支持 Windows'));
   }
 
-  const ts = Date.now();
-  const rand = Math.random().toString(36).slice(2, 6);
-  const scriptPath = path.join(os.tmpdir(), `sw_com_${ts}_${rand}.vbs`);
-  fs.writeFileSync(scriptPath, scriptCode, 'utf8');
+  const scriptPath = writeVBSFile(scriptCode, 'sw_com');
 
   return new Promise<string>((resolve, reject) => {
     const cscriptPath =
@@ -220,9 +217,6 @@ function runVBS(scriptCode: string): Promise<string> {
   });
 }
 
-function safeUnlink(p: string): void {
-  try { fs.unlinkSync(p); } catch { /* ignore */ }
-}
 
 // ===== VBS 脚本生成 =====
 

@@ -123,7 +123,7 @@ export function envToConfig(env: Record<string, string>): LLMConfig | null {
       stream: true,
       temperature: 0.3,
       maxTokens: 4096,
-      timeoutMs: 60_000,
+      timeoutMs: 120_000,
     };
   }
   return null;

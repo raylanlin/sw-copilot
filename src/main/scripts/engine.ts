@@ -17,6 +17,7 @@ import type { ScriptLanguage, ScriptResult } from '../../shared/types';
 import { validateScript } from './sanitizer';
 import { vbaToVbs, detectRuntimes } from './vba-macro-writer';
 import type { SolidWorksBridge } from '../com/sw-bridge';
+import { writeVBSFile, safeUnlink } from '../com/vbs-writer';
 
 const PYTHON_TIMEOUT_MS = 60_000;
 const VBS_TIMEOUT_MS = 30_000;
@@ -78,10 +79,9 @@ export class ScriptEngine {
   private async runVBS(vbaCode: string, startedAt: number): Promise<ScriptResult> {
     const ts = Date.now();
     const resultPath = path.join(os.tmpdir(), `sw_result_${ts}.json`);
-    const scriptPath = path.join(os.tmpdir(), `sw_macro_${ts}.vbs`);
 
     const vbsCode = vbaToVbs(vbaCode, { resultFilePath: resultPath });
-    fs.writeFileSync(scriptPath, vbsCode, 'utf8');
+    const scriptPath = writeVBSFile(vbsCode, 'sw_macro');
 
     return new Promise<ScriptResult>((resolve) => {
       // 使用 System32 下的 cscript 完整路径，避免 PATH 环境变量不含 System32 的情况
@@ -168,9 +168,7 @@ export class ScriptEngine {
   // 所有 VBA 执行现在统一走 VBScript → cscript.exe 路径。
 }
 
-function safeUnlink(p: string): void {
-  try { fs.unlinkSync(p); } catch { /* ignore */ }
-}
+
 
 function readResultFile(p: string): { success: boolean; message: string } | null {
   try {

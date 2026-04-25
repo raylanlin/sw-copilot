@@ -68,7 +68,7 @@ export abstract class BaseLLMAdapter implements LLMAdapter {
     cleanup: () => void;
   } {
     const controller = new AbortController();
-    const timeoutMs = this.config.timeoutMs ?? 60_000;
+    const timeoutMs = this.config.timeoutMs ?? 120_000;
     const timer = setTimeout(() => controller.abort(new Error('timeout')), timeoutMs);
 
     const onAbort = () => controller.abort(external?.reason);
