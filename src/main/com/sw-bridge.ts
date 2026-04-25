@@ -138,10 +138,9 @@ export class SolidWorksBridge {
   private async checkConnection(): Promise<boolean> {
     const vbs = `
 On Error Resume Next
-On Error Resume Next
 Set swApp = GetObject(, "SldWorks.Application")
 If swApp Is Nothing Then Set swApp = CreateObject("SldWorks.Application")
-If Err.Number = 0 Then
+If Err.Number = 0 And Not swApp Is Nothing Then
     WScript.Echo "OK"
 Else
     WScript.Echo "FAIL"
@@ -156,7 +155,6 @@ End If`;
 
   private async fetchStatus(): Promise<SWStatus> {
     const vbs = `
-On Error Resume Next
 On Error Resume Next
 Set swApp = GetObject(, "SldWorks.Application")
 If swApp Is Nothing Then Set swApp = CreateObject("SldWorks.Application")
@@ -210,7 +208,7 @@ function runVBS(scriptCode: string): Promise<string> {
     const cscriptPath =
       `${process.env.SYSTEMROOT || 'C:\\Windows'}\\System32\\cscript.exe`;
     exec(
-      `chcp 65001 >nul && "${cscriptPath}" //NoLogo "${scriptPath}"`,
+      `"${cscriptPath}" //NoLogo "${scriptPath}"`,
       { timeout: VBS_TIMEOUT_MS, windowsHide: true, encoding: 'utf8' },
       (error, stdout) => {
         safeUnlink(scriptPath);
@@ -239,7 +237,6 @@ function emptyFeatures(): DocumentFeatures {
 
 function buildCollectFeaturesVBS(): string {
   return `
-On Error Resume Next
 On Error Resume Next
 Set swApp = GetObject(, "SldWorks.Application")
 If swApp Is Nothing Then Set swApp = CreateObject("SldWorks.Application")
@@ -432,7 +429,6 @@ function buildBackupVBS(backupPath: string, originalPath?: string): string {
     ? `\n' 恢复原文档（SaveAs3 会改变活动文档路径）\nswApp.OpenDoc7 \"${originalPath.replace(/\\/g, '\\\\')}\", \"\", 1, \"\"`
     : '';
   return `
-On Error Resume Next
 On Error Resume Next
 Set swApp = GetObject(, "SldWorks.Application")
 If swApp Is Nothing Then Set swApp = CreateObject("SldWorks.Application")
