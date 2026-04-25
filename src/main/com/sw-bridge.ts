@@ -140,7 +140,7 @@ export class SolidWorksBridge {
 On Error Resume Next
 Set swApp = GetObject(, "SldWorks.Application")
 If swApp Is Nothing Then Set swApp = CreateObject("SldWorks.Application")
-If Err.Number = 0 And Not swApp Is Nothing Then
+If Not swApp Is Nothing Then
     WScript.Echo "OK"
 Else
     WScript.Echo "FAIL"
@@ -158,7 +158,7 @@ End If`;
 On Error Resume Next
 Set swApp = GetObject(, "SldWorks.Application")
 If swApp Is Nothing Then Set swApp = CreateObject("SldWorks.Application")
-If Err.Number <> 0 Then
+If swApp Is Nothing Then
     WScript.Echo "{""connected"":false}"
     WScript.Quit 0
 End If
@@ -240,7 +240,7 @@ function buildCollectFeaturesVBS(): string {
 On Error Resume Next
 Set swApp = GetObject(, "SldWorks.Application")
 If swApp Is Nothing Then Set swApp = CreateObject("SldWorks.Application")
-If Err.Number <> 0 Then
+If swApp Is Nothing Then
     WScript.Echo "{}"
     WScript.Quit 0
 End If
@@ -432,7 +432,7 @@ function buildBackupVBS(backupPath: string, originalPath?: string): string {
 On Error Resume Next
 Set swApp = GetObject(, "SldWorks.Application")
 If swApp Is Nothing Then Set swApp = CreateObject("SldWorks.Application")
-If Err.Number <> 0 Then WScript.Quit 1
+If swApp Is Nothing Then WScript.Quit 1
 Set doc = swApp.ActiveDoc
 If doc Is Nothing Then WScript.Quit 1
 
