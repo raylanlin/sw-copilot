@@ -25,16 +25,6 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Debug - check winax in node_modules
-        run: |
-          echo "=== Checking winax in node_modules ==="
-          if (Test-Path "node_modules/winax") {
-            Get-ChildItem "node_modules/winax" | Select-Object Name, Length
-            echo "winax FOUND in node_modules"
-          } else {
-            echo "winax NOT FOUND in node_modules"
-          }
-
       - name: Build
         run: npm run build
 
@@ -42,26 +32,6 @@ jobs:
         run: npm run dist
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Debug - check winax in build output
-        run: |
-          echo "=== Extracting asar to check contents ==="
-          npm install -g @electron/asar >$null 2>&1
-          $asarPath = Get-ChildItem -Path "release" -Recurse -Filter "app.asar" | Select-Object -First 1
-          if ($asarPath) {
-            echo "Found asar at: $($asarPath.FullName)"
-            & npx asar list $asarPath.FullName | Select-String "winax"
-          } else {
-            echo "No app.asar found - checking release dir"
-            Get-ChildItem "release" -Recurse | Select-Object FullName, Length | Select-Object -First 30
-          }
-          echo "=== Checking unpacked dir ==="
-          $unpacked = Get-ChildItem -Path "release" -Recurse -Directory -Filter "winax" | Select-Object -First 1
-          if ($unpacked) {
-            echo "winax dir found at $($unpacked.FullName)"
-          } else {
-            echo "No winax dir found anywhere in release"
-          }
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7

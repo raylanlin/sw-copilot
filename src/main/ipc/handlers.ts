@@ -56,7 +56,7 @@ export function registerIpcHandlers(getMainWindow: () => BrowserWindow | null) {
   });
 
   ipcMain.handle(IpcChannels.SW_CONTEXT, async () => {
-    const ctx = collectDocumentContext(bridge);
+    const ctx = await collectDocumentContext(bridge);
     if (!ctx) return { ok: false, context: null, formatted: '' };
     const formatted = formatContextForPrompt(ctx);
     return { ok: true, context: ctx, formatted };

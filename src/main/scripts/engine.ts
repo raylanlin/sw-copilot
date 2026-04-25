@@ -20,9 +20,8 @@ import type { SolidWorksBridge } from '../com/sw-bridge';
 
 const PYTHON_TIMEOUT_MS = 60_000;
 const VBS_TIMEOUT_MS = 30_000;
-const VBA_TIMEOUT_MS = 30_000;
 
-type Runtime = 'python' | 'cscript' | 'com';
+type Runtime = 'python' | 'cscript';
 
 export class ScriptEngine {
   private preferredRuntime: Runtime | null = null;
@@ -38,7 +37,8 @@ export class ScriptEngine {
     } else if (runtimes.includes('python')) {
       this.preferredRuntime = 'python';
     } else {
-      this.preferredRuntime = 'com';
+      // cscript 在 Windows 上总是可用的
+      this.preferredRuntime = 'cscript';
     }
     this.runtimeDetected = true;
     return this.preferredRuntime;
@@ -63,10 +63,8 @@ export class ScriptEngine {
       if (language === 'python') {
         return await this.runPython(code, start);
       }
-      // VBA: 优先用 cscript 执行转换后的 VBS
-      const runtime = await this.detectRuntime();
-      if (runtime === 'cscript') return await this.runVBS(code, start);
-      return await this.runVBACom(code, start);
+      // VBA: 通过 cscript 执行转换后的 VBS（不再使用 COM 直接调用）
+      return await this.runVBS(code, start);
     } catch (err) {
       return {
         success: false, output: '',
@@ -165,31 +163,9 @@ export class ScriptEngine {
     });
   }
 
-  // ===== COM 直接执行（fallback）=====
-  private async runVBACom(code: string, startedAt: number): Promise<ScriptResult> {
-    if (!this.bridge.isConnected()) {
-      return { success: false, output: '', error: 'SolidWorks 未连接', duration: Date.now() - startedAt };
-    }
-    const tempPath = path.join(os.tmpdir(), `sw_macro_${Date.now()}.swp`);
-    fs.writeFileSync(tempPath, code, 'utf8');
-    try {
-      const swApp = this.bridge.getRawApp();
-      const execP = new Promise<ScriptResult>((resolve) => {
-        try {
-          const result = swApp.RunMacro2(tempPath, '', 'main', 1, 0);
-          resolve({ success: result === 0 || result === true, output: '', duration: Date.now() - startedAt });
-        } catch (err) {
-          resolve({ success: false, output: '', error: err instanceof Error ? err.message : String(err), duration: Date.now() - startedAt });
-        }
-      });
-      const timeoutP = new Promise<ScriptResult>((resolve) => {
-        setTimeout(() => resolve({ success: false, output: '', error: `VBA 执行超时 (${VBA_TIMEOUT_MS / 1000}s)`, duration: Date.now() - startedAt }), VBA_TIMEOUT_MS);
-      });
-      return await Promise.race([execP, timeoutP]);
-    } finally {
-      safeUnlink(tempPath);
-    }
-  }
+  // ===== COM 直接执行已移除 =====
+  // 以前通过 getRawApp() + RunMacro2 执行 VBA，但 winax 无法在打包环境工作。
+  // 所有 VBA 执行现在统一走 VBScript → cscript.exe 路径。
 }
 
 function safeUnlink(p: string): void {

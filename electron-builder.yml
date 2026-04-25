@@ -19,12 +19,6 @@ files:
   - '!tsconfig*.json'
   - '!vite.config.ts'
   - '!.env*'
-  - node_modules/winax/**/*
-
-npmRebuild: false
-
-asarUnpack:
-  - 'node_modules/winax/**/*'
 
 win:
   target:

@@ -4,30 +4,21 @@
 // 采集的信息会注入到 AI 的 system prompt 中，
 // 让 AI 知道用户当前在操作什么文件、有哪些特征和尺寸。
 //
-// 所有 COM 调用都 try-catch 包裹，采集失败不影响主流程。
+// 所有 COM 调用通过 sw-bridge 的 VBScript 代理完成，
+// 不再直接调用 COM API（winax 依赖已移除）。
 
-import type { SolidWorksBridge } from './sw-bridge';
+import type { SolidWorksBridge, DocumentFeatures } from './sw-bridge';
 
 export interface SWDocumentContext {
-  /** 文件名（不含路径） */
   fileName: string;
-  /** 完整路径 */
   filePath: string;
-  /** 文档类型 */
   docType: 'part' | 'assembly' | 'drawing';
-  /** SolidWorks 版本 */
   swVersion?: string;
-  /** 活动配置名称 */
   activeConfiguration?: string;
-  /** 特征树（名称 + 类型），最多 50 个 */
   features: Array<{ name: string; type: string; suppressed: boolean }>;
-  /** 尺寸列表（名称 + 当前值 mm），最多 30 个 */
   dimensions: Array<{ fullName: string; value: number }>;
-  /** 自定义属性 */
   customProperties: Record<string, string>;
-  /** 装配体组件列表（仅装配体），最多 50 个 */
   components?: Array<{ name: string; fileName: string; suppressed: boolean }>;
-  /** 材料名称（仅零件） */
   material?: string;
 }
 
@@ -35,48 +26,49 @@ export interface SWDocumentContext {
  * 从当前活动文档采集上下文。
  * 如果没有打开文档或 SolidWorks 未连接，返回 null。
  */
-export function collectDocumentContext(bridge: SolidWorksBridge): SWDocumentContext | null {
-  if (!bridge.isConnected()) return null;
+export async function collectDocumentContext(
+  bridge: SolidWorksBridge,
+): Promise<SWDocumentContext | null> {
+  const status = bridge.getStatus();
+  if (!status.connected) return null;
 
-  const swApp = bridge.getRawApp();
-  if (!swApp) return null;
+  // 采集文档特征信息
+  const features = await bridge.collectDocumentFeatures();
+  if (!features) return null;
 
-  const doc = bridge.getActiveDocument();
-  if (!doc) return null;
+  const filePath = status.activeDocumentPath ?? '(未保存)';
+  const fileName = filePath
+    ? filePath.split('\\').pop() || filePath
+    : '(未保存)';
 
-  const docTypeNum = safeCall(() => doc.GetType(), 0);
-  const docType = docTypeNum === 1 ? 'part' : docTypeNum === 2 ? 'assembly' : docTypeNum === 3 ? 'drawing' : null;
-  if (!docType) return null;
-
-  const filePath = safeCall(() => doc.GetPathName(), '') as string;
-  const fileName = filePath ? filePath.split('\\').pop() || filePath : '(未保存)';
-
-  const ctx: SWDocumentContext = {
+  return {
     fileName,
     filePath,
-    docType,
-    swVersion: bridge.getVersion(),
-    activeConfiguration: safeCall(() => doc.ConfigurationManager?.ActiveConfiguration?.Name, undefined),
-    features: collectFeatures(doc),
-    dimensions: collectDimensions(doc),
-    customProperties: collectCustomProperties(doc),
+    docType: status.activeDocumentType ?? 'part',
+    swVersion: status.version,
+    activeConfiguration: features.activeConfiguration,
+    features: features.features ?? [],
+    dimensions: features.dimensions ?? [],
+    customProperties: features.customProperties ?? {},
+    components: features.components,
+    material: features.material,
   };
-
-  // 零件特有信息
-  if (docType === 'part') {
-    ctx.material = safeCall(() => doc.GetMaterialPropertyName2('', ''), undefined);
-  }
-
-  // 装配体特有信息
-  if (docType === 'assembly') {
-    ctx.components = collectComponents(doc);
-  }
-
-  return ctx;
 }
 
 /**
  * 将上下文格式化为可嵌入 system prompt 的文本。
+ */
+export async function formatContextForPromptAsync(
+  bridge: SolidWorksBridge,
+): Promise<string> {
+  const ctx = await collectDocumentContext(bridge);
+  if (!ctx) return '';
+  return formatContextForPrompt(ctx);
+}
+
+/**
+ * 将上下文格式化为可嵌入 system prompt 的文本。
+ * 同步版本，直接从缓存读取（不触发 VBS 调用）。
  */
 export function formatContextForPrompt(ctx: SWDocumentContext): string {
   const lines: string[] = [
@@ -140,154 +132,4 @@ export function formatContextForPrompt(ctx: SWDocumentContext): string {
   }
 
   return lines.join('\n');
-}
-
-// ===== 内部采集函数 =====
-
-function collectFeatures(doc: any): SWDocumentContext['features'] {
-  const features: SWDocumentContext['features'] = [];
-  try {
-    let feat = doc.FirstFeature();
-    let count = 0;
-    while (feat && count < 50) {
-      const name = safeCall(() => feat.Name, '');
-      const type = safeCall(() => feat.GetTypeName2(), '');
-      const suppressed = safeCall(() => feat.IsSuppressed(), false);
-
-      // 跳过系统特征（如原点、基准面等，类型以 "Origin" 开头的）
-      if (type && !type.startsWith('Origin') && name) {
-        features.push({ name, type, suppressed });
-        count++;
-      }
-      feat = safeCall(() => feat.GetNextFeature(), null);
-    }
-  } catch {
-    // 特征遍历失败，返回空列表
-  }
-  return features;
-}
-
-function collectDimensions(doc: any): SWDocumentContext['dimensions'] {
-  const dims: SWDocumentContext['dimensions'] = [];
-  try {
-    let feat = doc.FirstFeature();
-    let count = 0;
-    while (feat && count < 30) {
-      let dispDim = safeCall(() => feat.GetFirstDisplayDimension(), null);
-      while (dispDim && count < 30) {
-        const dim = safeCall(() => dispDim.GetDimension2(0), null);
-        if (dim) {
-          const fullName = safeCall(() => dim.FullName, '');
-          // GetSystemValue3 返回米，转毫米
-          const valueM = safeCall(() => dim.GetSystemValue3(1, null), null);
-          if (fullName && valueM !== null) {
-            dims.push({ fullName, value: valueM * 1000 });
-            count++;
-          }
-        }
-        dispDim = safeCall(() => feat.GetNextDisplayDimension(dispDim), null);
-      }
-      feat = safeCall(() => feat.GetNextFeature(), null);
-    }
-  } catch {
-    // ignore
-  }
-  return dims;
-}
-
-/**
- * 尝试读取 SolidWorks 自定义属性的值。
- *
- * COM ByRef 限制: CustomPropertyManager.Get5 的 Value/ResolvedVal 是 BSTR 输出参数,
- * winax 不支持 JS 按引用传参来接收输出值。
- *
- * 应对策略(多策略尝试,命中第一个能工作的):
- *   1. 传数组引用(JS 数组是引用类型,部分 winax 版本能写回数组元素)
- *   2. 传 null(部分 winax 版本自动分配变量)
- *   3. 传空字符串(原始方式,不期待返回值)
- *   都失败则返回 null,该属性跳过。
- */
-function tryGetCustomPropertyValue(
-  mgr: any,
-  name: string,
-): { value: string; resolved: string } | null {
-  // 策略1:传数组引用
-  try {
-    const val = [''];
-    const resolved = [''];
-    const ok = mgr.Get5(name, false, val, resolved, false);
-    if (ok !== false && (val[0] || resolved[0])) {
-      return { value: String(val[0] || ''), resolved: String(resolved[0] || '') };
-    }
-  } catch { /* 尝试下一策略 */ }
-
-  // 策略2:传 null,并从返回值对象提取
-  try {
-    const result = mgr.Get5(name, false, null, null, false);
-    if (result && typeof result === 'object') {
-      const r = result as any;
-      return {
-        value: String(r.Value || r[0] || ''),
-        resolved: String(r.ResolvedValue || r[1] || ''),
-      };
-    }
-  } catch { /* 尝试下一策略 */ }
-
-  // 策略3:传空字符串(纯熟悉调用,不期待返回值)
-  try {
-    mgr.Get5(name, false, '', '', false);
-    return { value: '', resolved: '' };
-  } catch { /* 彻底失败 */ }
-
-  return null;
-}
-
-function collectCustomProperties(doc: any): Record<string, string> {
-  const props: Record<string, string> = {};
-  try {
-    const mgr = doc.Extension?.CustomPropertyManager?.('');
-    if (!mgr) return props;
-
-    const names = safeCall(() => mgr.GetNames(), null);
-    if (!names || !Array.isArray(names)) return props;
-
-    for (const name of names.slice(0, 20)) {
-      const prop = tryGetCustomPropertyValue(mgr, name);
-      const val = prop?.resolved || prop?.value || '';
-      if (val) props[name] = val;
-    }
-  } catch {
-    // ignore
-  }
-  return props;
-}
-
-function collectComponents(doc: any): SWDocumentContext['components'] {
-  const comps: NonNullable<SWDocumentContext['components']> = [];
-  try {
-    const components = safeCall(() => doc.GetComponents(true), null);
-    if (!components || !Array.isArray(components)) return comps;
-
-    for (const comp of components.slice(0, 50)) {
-      const name = safeCall(() => comp.Name2, '');
-      const pathName = safeCall(() => comp.GetPathName(), '');
-      const suppressed = safeCall(() => comp.IsSuppressed(), false);
-      const fileName = pathName ? pathName.split('\\').pop() || pathName : '';
-      if (name) {
-        comps.push({ name, fileName, suppressed });
-      }
-    }
-  } catch {
-    // ignore
-  }
-  return comps;
-}
-
-/** 安全调用 COM 方法，失败返回默认值 */
-function safeCall<T>(fn: () => T, defaultValue: T): T {
-  try {
-    return fn();
-  } catch {
-    return defaultValue;
-  }
 }
