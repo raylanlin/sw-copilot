@@ -10,6 +10,13 @@
 
 SW Copilot 的理念是：**AI 后端由你决定**。你可以接入 Claude、GPT-4o、DeepSeek、Qwen、MiniMax，甚至 Ollama 本地模型。代码开源，个人免费使用（MIT + Commons Clause 非商用许可，商用需授权）。
 
+## 架构亮点
+
+- **零依赖 COM 连接**：通过 Windows 自带的 `cscript.exe` 执行 VBScript 连接 SolidWorks，无需安装 winax 等原生模块。支持 `GetObject` → `CreateObject` 自动 fallback，兼容 SW 未注册 ROT 的场景。
+- **UTF-16LE+BOM 编码**：解决中文注释和字符串在 cscript 中的编译错误。
+- **VBA → VBScript 转换器**：10 步自动转换（类型移除、错误处理替换、Sub 展开等），支持 AI 直接生成的 VBA 代码。
+- **VBS 执行结果回传**：通过临时 JSON 文件，实现 cscript 脚本执行结果→Electron 主进程→前端 UI 的完整链路。
+
 ## 功能
 
 - 自然语言 → SolidWorks 操作（VBA 宏 / Python 脚本）
@@ -70,7 +77,7 @@ AI: [生成建模脚本] → 零件创建完成 ✓
 
 ## 技术栈
 
-Electron + React + TypeScript + winax (COM) + Anthropic SDK + OpenAI SDK
+Electron + React + TypeScript + cscript/VBS (COM) + 原生 fetch/SSE（无 SDK 依赖）
 
 ## 系统要求
 
