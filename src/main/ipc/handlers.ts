@@ -11,7 +11,7 @@ import { createAdapter, validateConfig } from '../llm';
 import { truncateMessages } from '../llm/context-window';
 import { resolveSystemPrompt } from '../llm/prompts';
 import { getBridge } from '../com/sw-bridge';
-import { collectDocumentContext, formatContextForPrompt } from '../com/context-collector';
+import { collectDocumentContext, formatContextForPrompt, formatContextForPromptAsync } from '../com/context-collector';
 import { ScriptEngine } from '../scripts/engine';
 import { validateScript } from '../scripts/sanitizer';
 import { generateScript } from '../scripts/generators';
@@ -78,7 +78,9 @@ export function registerIpcHandlers(getMainWindow: () => BrowserWindow | null) {
       try {
         const adapter = createAdapter(payload.config);
         const systemPrompt = resolveSystemPrompt(payload.config.systemPrompt);
-        const truncated = truncateMessages(payload.messages, systemPrompt, payload.config.model);
+        const swContext = await formatContextForPromptAsync(bridge);
+        const fullPrompt = swContext ? `${systemPrompt}\n\n${swContext}` : systemPrompt;
+        const truncated = truncateMessages(payload.messages, fullPrompt, payload.config.model);
         const response = await adapter.chat(truncated, controller.signal);
         return { ok: true, response, requestId: reqId };
       } catch (err) {
@@ -107,7 +109,9 @@ export function registerIpcHandlers(getMainWindow: () => BrowserWindow | null) {
         try {
           const adapter = createAdapter(payload.config);
           const systemPrompt = resolveSystemPrompt(payload.config.systemPrompt);
-          const truncated = truncateMessages(payload.messages, systemPrompt, payload.config.model);
+          const swContext = await formatContextForPromptAsync(bridge);
+          const fullPrompt = swContext ? `${systemPrompt}\n\n${swContext}` : systemPrompt;
+          const truncated = truncateMessages(payload.messages, fullPrompt, payload.config.model);
           const stream = adapter.chatStream(truncated, reqId, controller.signal);
           for await (const ev of stream) {
             const win = getMainWindow();
